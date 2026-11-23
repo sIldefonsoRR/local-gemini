@@ -9,23 +9,23 @@ A small FastAPI bridge (`gemini-bridge.py`) stands in for the Gemini API and for
 ```mermaid
 flowchart LR
     subgraph host["Host machine"]
-        client["call-gemini.py<br/>google-genai SDK<br/>api_key = 'unused'"]
+        client["call-gemini.py<br/>google-genai SDK<br/>placeholder API key"]
     end
 
     subgraph compose["Docker Compose network"]
-        bridge["gemini-bridge<br/>FastAPI on :4000<br/>(host 127.0.0.1:4000)"]
-        ollama["ollama<br/>:11434<br/>(host 127.0.0.1:11500)"]
+        bridge["gemini-bridge<br/>FastAPI, port 4000<br/>host 127.0.0.1:4000"]
+        ollama["ollama<br/>port 11434<br/>host 127.0.0.1:11500"]
         volume[("ollama_data volume<br/>pulled models")]
     end
 
-    client -->|"POST /v1/models/{model}:generateContent<br/>POST /v1/models/{model}:streamGenerateContent?alt=sse"| bridge
-    bridge -->|"POST http://ollama:11434/api/generate<br/>model = OLLAMA_MODEL (default llama3.2)"| ollama
+    client -->|"generateContent<br/>streamGenerateContent with alt=sse"| bridge
+    bridge -->|"POST /api/generate<br/>model from OLLAMA_MODEL, default llama3.2"| ollama
     ollama -.->|"JSON, or NDJSON when streaming"| bridge
-    bridge -.->|"Gemini JSON, or SSE data: events<br/>errors as {error: {code, status, message}}"| client
+    bridge -.->|"Gemini JSON or SSE events<br/>Gemini-style errors"| client
     ollama --- volume
 ```
 
-1. The client uses the unmodified `google-genai` SDK with `base_url` set to `http://localhost:4000` and `api_version="v1"`.
+1. The client uses the unmodified `google-genai` SDK with `base_url` set to `http://localhost:4000` and `api_version="v1"`, so it calls `POST /v1/models/{model}:generateContent` or `POST /v1/models/{model}:streamGenerateContent?alt=sse`.
 2. The bridge joins the text parts of the request into one prompt and sends it to Ollama. It ignores the requested model name (for example `gemini-2.5-flash`) and always uses `OLLAMA_MODEL`.
 3. Ollama replies with one JSON object, or with newline-delimited JSON when streaming.
 4. The bridge converts the reply into a Gemini response, or into server-sent events for the streaming route. Ollama failures become Gemini-style errors, which the SDK raises as `ClientError` or `ServerError`.
