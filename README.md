@@ -33,7 +33,7 @@ flowchart LR
 | File | Purpose |
 | --- | --- |
 | `call-gemini.py` | Example client. Creates a `genai.Client` pointed at `http://localhost:4000`, asks for a question, and prints the answer. |
-| `call-gemini-with-memory.py` | Interactive chat loop. Keeps the last 5 turns in memory and injects them into the prompt as `User:` / `Assistant:` lines, so the model can refer to earlier messages. History is lost on exit; type `exit` or `quit` to stop. |
+| `call-gemini-with-memory.py` | Interactive chat loop that streams replies as they are generated (`generate_content_stream`). Keeps the last 5 turns in memory and injects them into the prompt as `User:` / `Assistant:` lines, so the model can refer to earlier messages. History is lost on exit; type `exit` or `quit` to stop. |
 | `gemini-bridge.py` | FastAPI app that accepts Gemini `generateContent` and `streamGenerateContent` requests, sends the prompt text to Ollama, and returns Gemini-shaped responses (streamed as server-sent events for the streaming route). |
 | `Dockerfile` | Builds the `gemini-bridge` image. |
 | `docker-compose.yml` | Runs the `ollama` and `gemini-bridge` containers. |

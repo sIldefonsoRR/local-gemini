@@ -35,7 +35,7 @@ pip install -r requirements.txt
 
 # Run the scripts
 python call-gemini.py              # one question, one answer
-python call-gemini-with-memory.py  # chat loop; last 5 turns injected into DEFAULT_PROMPT, in-memory only
+python call-gemini-with-memory.py  # streaming chat loop; last 5 turns injected into DEFAULT_PROMPT, in-memory only
 
 # Debug bridge / model
 docker logs -f gemini-bridge

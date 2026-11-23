@@ -61,20 +61,37 @@ def main() -> None:
             break
 
         start_time = time.time()
+        first_chunk_time = None
+        parts: list[str] = []
+        print("Assistant: ", end="", flush=True)
         try:
-            response = client.models.generate_content(
+            for chunk in client.models.generate_content_stream(
                 model=MODEL,
                 contents=build_prompt(question, session_history),
-            )
+            ):
+                text = chunk.text or ""
+                if not parts:
+                    text = text.lstrip()  # drop leading whitespace before the first word
+                if not text:
+                    continue
+                if first_chunk_time is None:
+                    first_chunk_time = time.time() - start_time
+                parts.append(text)
+                print(text, end="", flush=True)
         except errors.APIError as exc:
-            # Don't record failed turns in the history.
-            print(f"Error {exc.code} {exc.status}: {exc.message}")
+            # Can fail before or partway through the reply; don't record failed turns.
+            print(f"\nError {exc.code} {exc.status}: {exc.message}")
             continue
+        except KeyboardInterrupt:
+            # Ctrl+C stops the current reply and returns to the prompt; the partial reply is not recorded.
+            print("\n[reply interrupted, not saved to history]")
+            continue
+        print()
 
-        answer = (response.text or "").strip()
+        answer = "".join(parts).strip()
         session_history.append((question, answer))
-        print(f"Assistant: {answer}")
-        print(f"({time.time() - start_time:.2f}s, {len(session_history)}/{MAX_TURNS} turns in memory)")
+        first = f"first token {first_chunk_time:.2f}s, " if first_chunk_time is not None else ""
+        print(f"({first}total {time.time() - start_time:.2f}s, {len(session_history)}/{MAX_TURNS} turns in memory)")
 
 
 if __name__ == "__main__":
