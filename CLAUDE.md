@@ -33,8 +33,9 @@ docker exec ollama ollama pull llama3.2
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# Run the script
-python call-gemini.py
+# Run the scripts
+python call-gemini.py              # one question, one answer
+python call-gemini-with-memory.py  # chat loop; last 5 turns injected into DEFAULT_PROMPT, in-memory only
 
 # Debug bridge / model
 docker logs -f gemini-bridge
