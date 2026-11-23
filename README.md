@@ -6,11 +6,29 @@ A small FastAPI bridge (`gemini-bridge.py`) stands in for the Gemini API and for
 
 ## How it works
 
+```mermaid
+flowchart LR
+    subgraph host["Host machine"]
+        client["call-gemini.py<br/>google-genai SDK<br/>api_key = 'unused'"]
+    end
+
+    subgraph compose["Docker Compose network"]
+        bridge["gemini-bridge<br/>FastAPI on :4000<br/>(host 127.0.0.1:4000)"]
+        ollama["ollama<br/>:11434<br/>(host 127.0.0.1:11500)"]
+        volume[("ollama_data volume<br/>pulled models")]
+    end
+
+    client -->|"POST /v1/models/{model}:generateContent<br/>POST /v1/models/{model}:streamGenerateContent?alt=sse"| bridge
+    bridge -->|"POST http://ollama:11434/api/generate<br/>model = OLLAMA_MODEL (default llama3.2)"| ollama
+    ollama -.->|"JSON, or NDJSON when streaming"| bridge
+    bridge -.->|"Gemini JSON, or SSE data: events<br/>errors as {error: {code, status, message}}"| client
+    ollama --- volume
 ```
-call-gemini.py  ──►  gemini-bridge (localhost:4000)  ──►  Ollama (localhost:11500)
- google-genai SDK     /v1/models/{model}:generateContent    llama3.2
- fake API key           → Ollama /api/generate
-```
+
+1. The client uses the unmodified `google-genai` SDK with `base_url` set to `http://localhost:4000` and `api_version="v1"`.
+2. The bridge joins the text parts of the request into one prompt and sends it to Ollama. It ignores the requested model name (for example `gemini-2.5-flash`) and always uses `OLLAMA_MODEL`.
+3. Ollama replies with one JSON object, or with newline-delimited JSON when streaming.
+4. The bridge converts the reply into a Gemini response, or into server-sent events for the streaming route. Ollama failures become Gemini-style errors, which the SDK raises as `ClientError` or `ServerError`.
 
 | File | Purpose |
 | --- | --- |
